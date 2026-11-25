@@ -45,6 +45,21 @@ W macOS lub Linuksie uruchom:
 
 Wynik znajdziesz w `app/build/outputs/apk/debug/app-debug.apk`. Aplikację możesz też uruchomić na emulatorze lub telefonie z Android Studio. Do zbudowania wariantu wydania użyj `assembleRelease`, a następnie podpisz APK własnym kluczem, jeśli dystrybuujesz własną kopię. Android wymaga tego samego podpisu przy instalowaniu aktualizacji na telefonie.
 
+## Wydania przez GitHub Actions
+
+W **Settings → Secrets and variables → Actions** dodaj sekrety repozytorium używane do podpisania APK. Użyj tego samego klucza co przy poprzednim wydaniu, jeśli nowy plik ma działać jako aktualizacja.
+
+| Sekret | Wartość |
+| --- | --- |
+| `ANDROID_KEYSTORE_BASE64` | Zawartość pliku kluczy JKS lub PKCS12 zakodowana w Base64 |
+| `ANDROID_KEYSTORE_PASSWORD` | Hasło do pliku kluczy |
+| `ANDROID_KEY_ALIAS` | Alias klucza podpisującego |
+| `ANDROID_KEY_PASSWORD` | Hasło klucza podpisującego |
+
+Przed wydaniem ustaw `versionName` w `app/build.gradle` na nową wersję i zwiększ `versionCode`. Po wypchnięciu commita wypchnij odpowiadający mu tag, np. `v1.0.1`. Workflow **Wydanie Androida** zbuduje APK z tego tagu, podpisze je i opublikuje wydanie po dodaniu pliku APK.
+
+Dla istniejącego tagu i nieopublikowanego wydania wybierz **Actions → Wydanie Androida → Run workflow**, a następnie wpisz tag. Workflow użyje istniejącego szkicu wydania, jeśli jest dostępny.
+
 ## Licencja
 
 Kod aplikacji jest dostępny na licencji [MIT](LICENSE). Pliki Gradle Wrapper podlegają licencji [Apache 2.0](gradle/wrapper/LICENSE).

@@ -1,0 +1,104 @@
+name: Wydanie Androida
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Istniejący tag w formacie v1.0.0
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+
+concurrency:
+  group: android-release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Sprawdź tag
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo '::error::Tag musi mieć format v1.0.0.'
+            exit 1
+          fi
+
+      - name: Pobierz kod z tagu
+        uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ env.RELEASE_TAG }}
+          persist-credentials: false
+
+      - name: Skonfiguruj JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Zainstaluj Android SDK 35
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+
+      - name: Zbuduj APK
+        run: ./gradlew --no-daemon assembleRelease
+
+      - name: Podpisz i zweryfikuj APK
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          : "${ANDROID_KEYSTORE_BASE64:?Brak sekretu ANDROID_KEYSTORE_BASE64}"
+          : "${ANDROID_KEYSTORE_PASSWORD:?Brak sekretu ANDROID_KEYSTORE_PASSWORD}"
+          : "${ANDROID_KEY_ALIAS:?Brak sekretu ANDROID_KEY_ALIAS}"
+          : "${ANDROID_KEY_PASSWORD:?Brak sekretu ANDROID_KEY_PASSWORD}"
+
+          tools="$ANDROID_HOME/build-tools/35.0.0"
+          unsigned_apk=app/build/outputs/apk/release/app-release-unsigned.apk
+          badging=$("$tools/aapt2" dump badging "$unsigned_apk")
+          if [[ "$badging" != *"versionName='${RELEASE_TAG#v}'"* ]]; then
+            echo '::error::Numer versionName w app/build.gradle musi odpowiadać tagowi.'
+            exit 1
+          fi
+
+          umask 077
+          keystore=$(mktemp "$RUNNER_TEMP/android-signing.XXXXXX")
+          trap 'rm -f "$keystore"' EXIT
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+
+          apk="$RUNNER_TEMP/GrafikPracy-$RELEASE_TAG.apk"
+          "$tools/apksigner" sign --ks "$keystore" --ks-key-alias "$ANDROID_KEY_ALIAS" \
+            --ks-pass env:ANDROID_KEYSTORE_PASSWORD --key-pass env:ANDROID_KEY_PASSWORD \
+            --out "$apk" "$unsigned_apk"
+          "$tools/apksigner" verify "$apk"
+
+      - name: Opublikuj wydanie z APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          apk="$RUNNER_TEMP/GrafikPracy-$RELEASE_TAG.apk"
+
+          if draft=$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft); then
+            if [[ "$draft" == false ]]; then
+              echo '::error::Wydanie jest już publiczne. Użyj nowego tagu, żeby opublikować aktualizację.'
+              exit 1
+            fi
+          else
+            gh release create "$RELEASE_TAG" --verify-tag --draft --generate-notes \
+              --title "Grafik pracy $RELEASE_TAG"
+          fi
+
+          gh release upload "$RELEASE_TAG" "$apk" --clobber
+          gh release edit "$RELEASE_TAG" --draft=false
