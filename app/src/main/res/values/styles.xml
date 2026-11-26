@@ -1,11 +1,20 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
-        <item name="android:colorAccent">#4939A8</item>
+        <item name="android:textColorPrimary">#18213B</item>
+        <item name="android:textColorSecondary">#545C78</item>
+        <item name="android:colorAccent">#5039C3</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowLightNavigationBar" tools:targetApi="27">true</item>
-        <item name="android:statusBarColor">#F5F6FC</item>
-        <item name="android:navigationBarColor">#F5F6FC</item>
-        <item name="android:windowBackground">#F5F6FC</item>
+        <item name="android:statusBarColor">#F2F3FA</item>
+        <item name="android:navigationBarColor">#F2F3FA</item>
+        <item name="android:windowBackground">#F2F3FA</item>
+    </style>
+    <style name="AlarmTheme" parent="AppTheme">
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="27">false</item>
+        <item name="android:statusBarColor">#241858</item>
+        <item name="android:navigationBarColor">#241858</item>
+        <item name="android:windowBackground">#241858</item>
     </style>
 </resources>

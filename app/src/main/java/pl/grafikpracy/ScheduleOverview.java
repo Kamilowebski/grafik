@@ -1,6 +1,8 @@
 package pl.grafikpracy;
 
 import android.app.AlertDialog;
+import android.content.res.ColorStateList;
+import android.graphics.drawable.StateListDrawable;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.EditText;
@@ -46,15 +48,26 @@ final class ScheduleOverview {
 
     void show() {
         LinearLayout page = ui.column();
-        page.setPadding(ui.dp(18), ui.dp(6), ui.dp(18), ui.dp(12));
+        page.setPadding(ui.dp(24), ui.dp(12), ui.dp(24), ui.dp(16));
         RadioGroup periods = new RadioGroup(activity);
         periods.setOrientation(RadioGroup.HORIZONTAL);
+        periods.setPadding(ui.dp(4), ui.dp(4), ui.dp(4), ui.dp(4));
+        periods.setBackground(ui.shape(Ui.BACKGROUND, 26, 0));
         for (Period item : Period.values()) {
             RadioButton button = new RadioButton(activity);
             button.setId(View.generateViewId());
             button.setText(item.label);
             button.setTextSize(13);
             button.setMinHeight(ui.dp(48));
+            button.setGravity(Gravity.CENTER);
+            button.setPadding(ui.dp(4), 0, ui.dp(4), 0);
+            button.setButtonDrawable((android.graphics.drawable.Drawable) null);
+            int[][] states = {new int[]{android.R.attr.state_checked}, new int[0]};
+            StateListDrawable selection = new StateListDrawable();
+            selection.addState(states[0], ui.shape(Ui.ACCENT, 22, 0));
+            selection.addState(states[1], ui.shape(Ui.BACKGROUND, 22, 0));
+            button.setBackground(selection);
+            button.setTextColor(new ColorStateList(states, new int[]{Ui.WHITE, Ui.SECONDARY}));
             button.setOnClickListener(view -> {
                 period = item;
                 refresh();
@@ -65,23 +78,22 @@ final class ScheduleOverview {
             }
         }
         page.addView(periods);
+        ui.space(page, 8);
         LinearLayout navigation = ui.row();
-        TextView previous = ui.button("‹", false, () -> move(-1));
-        previous.setContentDescription("Poprzedni okres");
-        navigation.addView(previous, new LinearLayout.LayoutParams(ui.dp(48), -2));
+        View previous = ui.arrow("Poprzedni okres", true, false, () -> move(-1));
+        navigation.addView(previous, new LinearLayout.LayoutParams(ui.dp(48), ui.dp(48)));
         range = ui.text("", 16, Ui.INK, true);
         range.setGravity(Gravity.CENTER);
         range.setPadding(ui.dp(4), 0, ui.dp(4), 0);
         navigation.addView(range, ui.weight());
-        TextView next = ui.button("›", false, () -> move(1));
-        next.setContentDescription("Następny okres");
-        navigation.addView(next, new LinearLayout.LayoutParams(ui.dp(48), -2));
+        View next = ui.arrow("Następny okres", false, false, () -> move(1));
+        navigation.addView(next, new LinearLayout.LayoutParams(ui.dp(48), ui.dp(48)));
         page.addView(navigation);
 
         body = ui.column();
         page.addView(body);
         refresh();
-        new AlertDialog.Builder(activity).setTitle("Godziny i urlop")
+        ui.sheet().setTitle("Godziny i urlop")
                 .setView(activity.dialogScroll(page)).setPositiveButton("Zamknij", null).show();
     }
 
@@ -122,12 +134,12 @@ final class ScheduleOverview {
         body.removeAllViews();
         ui.space(body, 14);
         LinearLayout metrics = ui.column();
-        metrics.setBackground(ui.shape(Ui.TINT, 16, 0));
-        metrics.setPadding(ui.dp(12), ui.dp(10), ui.dp(12), ui.dp(10));
-        metrics.addView(ui.text("Godziny pracy w grafiku", 14, Ui.SECONDARY, true));
-        metrics.addView(ui.text(ShiftHours.durationLabel(totals.minutes), 28, Ui.ACCENT, true));
+        metrics.setBackground(ui.weekBackground());
+        metrics.setPadding(ui.dp(18), ui.dp(14), ui.dp(18), ui.dp(14));
+        metrics.addView(ui.text("Godziny pracy w grafiku", 14, Ui.LAVENDER, true));
+        metrics.addView(ui.heading(ShiftHours.durationLabel(totals.minutes), 32, Ui.WHITE));
         metrics.addView(ui.text(MainActivity.shiftCount(totals.shifts) + "  ·  " + totals.workDays
-                + (totals.workDays == 1 ? " dzień pracy" : " dni pracy"), 14, Ui.SECONDARY, false));
+                + (totals.workDays == 1 ? " dzień pracy" : " dni pracy"), 14, Ui.LAVENDER, false));
         body.addView(metrics);
         ui.space(body, 8);
         addRow("Noce z dyżurem", totals.dutyNights);
@@ -142,7 +154,7 @@ final class ScheduleOverview {
                 .days(DayPlan.Status.VACATION);
         int allowance = Store.vacationAllowance(activity, year);
         ui.space(body, 14);
-        body.addView(ui.text("Pula urlopu na " + year, 18, Ui.INK, true));
+        body.addView(ui.heading("Pula urlopu na " + year, 19, Ui.INK));
         addRow("Zaplanowane dni urlopu", used);
         if (allowance >= 0) {
             addRow("Roczna pula (dni)", allowance);
@@ -154,10 +166,11 @@ final class ScheduleOverview {
 
     private void addRow(String label, int value) {
         LinearLayout row = ui.row();
-        row.setMinimumHeight(ui.dp(34));
+        row.setMinimumHeight(ui.dp(37));
         row.addView(ui.text(label, 14, Ui.INK, false), ui.weight());
         row.addView(ui.text(String.valueOf(value), 15, Ui.ACCENT, true));
         body.addView(row);
+        ui.divider(body, 0);
     }
 
     private void editAllowance(int year, int allowance) {
@@ -168,8 +181,10 @@ final class ScheduleOverview {
         if (allowance < 0) {
             field.setText("");
         }
+        ui.space(content, 6);
+        field.setContentDescription("Roczna pula urlopu w dniach");
         content.addView(field);
-        AlertDialog dialog = new AlertDialog.Builder(activity).setTitle("Urlop " + year)
+        AlertDialog dialog = ui.dialog().setTitle("Urlop " + year)
                 .setView(content).setNegativeButton("Anuluj", null).setPositiveButton("Zapisz", null).create();
         dialog.show();
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(button -> {

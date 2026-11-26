@@ -7,9 +7,6 @@ import android.app.NotificationManager;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.content.res.ColorStateList;
-import android.graphics.drawable.InsetDrawable;
-import android.graphics.drawable.RippleDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -21,7 +18,6 @@ import android.view.View;
 import android.view.WindowInsets;
 import android.widget.EditText;
 import android.widget.FrameLayout;
-import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -182,16 +178,15 @@ public final class MainActivity extends Activity {
         LocalDate today = LocalDate.now();
 
         LinearLayout header = ui.row();
-        header.setPadding(ui.dp(9), ui.dp(3), ui.dp(12), ui.dp(3));
+        header.setPadding(ui.dp(14), ui.dp(3), ui.dp(16), ui.dp(6));
         ImageView menu = new ImageView(this);
         menu.setImageResource(R.drawable.drawer_menu);
         menu.setContentDescription("Otwórz menu");
         menu.setPadding(ui.dp(11), ui.dp(11), ui.dp(11), ui.dp(11));
-        ui.action(menu, Ui.TINT, 13, 0, this::showWeekMenu);
+        ui.action(menu, Ui.WHITE, 24, 0, this::showWeekMenu);
         header.addView(menu, new LinearLayout.LayoutParams(ui.dp(48), ui.dp(48)));
         ui.gap(header, 10);
-        TextView title = ui.text("Grafik pracy", 25, Ui.INK, true);
-        title.setLetterSpacing(-0.025f);
+        TextView title = ui.heading("Grafik pracy", 25, Ui.INK);
         title.setSingleLine(true);
         title.setEllipsize(TextUtils.TruncateAt.END);
         header.addView(title, ui.weight());
@@ -232,14 +227,16 @@ public final class MainActivity extends Activity {
                 && !shift.date.isBefore(start) && shift.date.isBefore(start.plusWeeks(1)))
                 .collect(java.util.stream.Collectors.toList());
         LinearLayout page = ui.column();
-        page.setPadding(ui.dp(12), ui.dp(2), ui.dp(12), ui.dp(8));
+        page.setPadding(ui.dp(16), ui.dp(2), ui.dp(16), ui.dp(8));
         scroll.addView(page, new ScrollView.LayoutParams(-1, -2));
         page.addView(weekCard(start, visible, plans));
-        ui.space(page, 8);
+        ui.space(page, 10);
+        scroll.days.setBackground(ui.shape(Ui.WHITE, 24, 0));
+        scroll.days.setClipToOutline(true);
         for (int day = 0; day < 7; day++) {
             LocalDate date = start.plusDays(day);
             if (day > 0) {
-                ui.space(scroll.days, 4);
+                ui.divider(scroll.days, 15);
             }
             scroll.days.addView(dayCard(date, today, visible, plans.getOrDefault(date, DayPlan.EMPTY)),
                     new LinearLayout.LayoutParams(-1, -2, 1));
@@ -287,7 +284,7 @@ public final class MainActivity extends Activity {
         TextView icon = ui.text(symbol, 23, primary ? Ui.WHITE : Ui.ACCENT, true);
         icon.setGravity(Gravity.CENTER);
         icon.setContentDescription(description);
-        ui.action(icon, primary ? Ui.ACCENT : Ui.TINT, 12, 0, action);
+        ui.action(icon, primary ? Ui.ACCENT : Ui.TINT, 24, 0, action);
         return icon;
     }
 
@@ -309,21 +306,21 @@ public final class MainActivity extends Activity {
     private LinearLayout weekCard(LocalDate start, List<Shift> shifts, Map<LocalDate, DayPlan> plans) {
         LinearLayout card = ui.column();
         card.setBackground(ui.weekBackground());
-        card.setPadding(ui.dp(7), ui.dp(5), ui.dp(7), ui.dp(8));
+        card.setPadding(ui.dp(10), ui.dp(10), ui.dp(10), ui.dp(11));
         LinearLayout navigation = ui.row();
 
-        ImageButton previous = weekArrow(true, () -> changeWeek(start.minusWeeks(1)));
+        View previous = ui.arrow("Poprzedni tydzień", true, true, () -> changeWeek(start.minusWeeks(1)));
         navigation.addView(previous, new LinearLayout.LayoutParams(ui.dp(48), ui.dp(48)));
         LinearLayout labels = ui.column();
         labels.setPadding(ui.dp(4), 0, ui.dp(4), 0);
         TextView weekNumber = ui.text(weekLabel(start), 12, Ui.LAVENDER, true);
         weekNumber.setGravity(Gravity.CENTER);
         labels.addView(weekNumber);
-        TextView dates = ui.text(weekRange(start), 17, Ui.WHITE, true);
+        TextView dates = ui.heading(weekRange(start), 23, Ui.WHITE);
         dates.setGravity(Gravity.CENTER);
         labels.addView(dates);
         navigation.addView(labels, ui.weight());
-        ImageButton next = weekArrow(false, () -> changeWeek(start.plusWeeks(1)));
+        View next = ui.arrow("Następny tydzień", false, true, () -> changeWeek(start.plusWeeks(1)));
         navigation.addView(next, new LinearLayout.LayoutParams(ui.dp(48), ui.dp(48)));
         card.addView(navigation);
 
@@ -332,7 +329,7 @@ public final class MainActivity extends Activity {
         if (totals.dutyNights > 0) {
             summary += "  ·  Dyżur: " + totals.dutyNights + (totals.dutyNights == 1 ? " noc" : " nocy");
         }
-        TextView hours = ui.text(summary, 13, Ui.WHITE, true);
+        TextView hours = ui.text(summary, 13, Ui.LAVENDER, true);
         hours.setGravity(Gravity.CENTER);
         hours.setPadding(ui.dp(4), ui.dp(4), ui.dp(4), 0);
         card.addView(hours);
@@ -347,20 +344,6 @@ public final class MainActivity extends Activity {
                     card.addView(upcoming);
                 });
         return card;
-    }
-
-    private ImageButton weekArrow(boolean previous, Runnable action) {
-        ImageButton button = new ImageButton(this);
-        button.setImageResource(R.drawable.week_chevron);
-        button.setScaleType(ImageView.ScaleType.CENTER);
-        button.setScaleX(previous ? -1 : 1);
-        button.setContentDescription(previous ? "Poprzedni tydzień" : "Następny tydzień");
-        RippleDrawable ripple = new RippleDrawable(ColorStateList.valueOf(0x44FFFFFF),
-                ui.shape(0x14FFFFFF, 12, 0x55FFFFFF), ui.shape(Ui.WHITE, 12, 0));
-        button.setBackground(new InsetDrawable(ripple, ui.dp(6)));
-        button.setPadding(0, 0, 0, 0);
-        button.setOnClickListener(view -> action.run());
-        return button;
     }
 
     private String weekRange(LocalDate start) {
@@ -391,7 +374,7 @@ public final class MainActivity extends Activity {
         LinearLayout card = ui.column();
         card.setGravity(Gravity.CENTER_VERTICAL);
         boolean isToday = date.equals(today);
-        ui.action(card, isToday ? Ui.TINT : Ui.WHITE, 13, isToday ? 0 : Ui.BORDER,
+        ui.action(card, isToday ? Ui.TINT : 0, 0, 0,
                 () -> dayActions(date));
         String description = "Opcje dnia, " + date.format(FULL_DATE);
         if (plan.isAbsent()) {
@@ -401,15 +384,17 @@ public final class MainActivity extends Activity {
             description += ", dyżur nocny";
         }
         card.setContentDescription(description);
-        card.setPadding(ui.dp(9), ui.dp(1), ui.dp(12), ui.dp(1));
+        card.setPadding(ui.dp(13), ui.dp(1), ui.dp(13), ui.dp(1));
         LinearLayout row = ui.row();
         row.setMinimumHeight(ui.dp(48));
-        TextView number = ui.text(String.valueOf(date.getDayOfMonth()), 17,
-                isToday ? Ui.WHITE : Ui.ACCENT, true);
+        TextView number = ui.text(String.valueOf(date.getDayOfMonth()), 18,
+                isToday ? Ui.WHITE : Ui.SECONDARY, true);
         number.setGravity(Gravity.CENTER);
-        number.setBackground(ui.shape(isToday ? Ui.ACCENT : Ui.TINT, 12, 0));
+        if (isToday) {
+            number.setBackground(ui.shape(Ui.ACCENT, 22, 0));
+        }
         number.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        row.addView(number, new LinearLayout.LayoutParams(ui.dp(34), ui.dp(36)));
+        row.addView(number, new LinearLayout.LayoutParams(ui.dp(36), ui.dp(36)));
         ui.gap(row, 8);
         String day = date.format(DAY);
         LinearLayout dateLabel = ui.column();
@@ -418,10 +403,10 @@ public final class MainActivity extends Activity {
             dateLabel.addView(ui.text("Dzisiaj", 12, Ui.ACCENT, true));
         }
         if (plan.isAbsent()) {
-            dateLabel.addView(ui.text(plan.status.label, 12, 0xFF9E3849, true));
+            dateLabel.addView(ui.text(plan.status.label, 12, Ui.LEAVE, true));
         }
         if (plan.nightDuty) {
-            dateLabel.addView(ui.text("Dyżur nocny", 12, 0xFF246579, true));
+            dateLabel.addView(ui.text("Dyżur nocny", 12, Ui.DUTY, true));
         }
         row.addView(dateLabel, ui.weight());
 
@@ -451,7 +436,7 @@ public final class MainActivity extends Activity {
         button.setPadding(ui.dp(5), ui.dp(1), ui.dp(3), ui.dp(1));
         String hours = shift.start.format(TIME) + " – " + shift.end.format(TIME)
                 + (shift.endNextDay ? " +1" : "");
-        button.addView(ui.text(hours, 15, Ui.INK, true));
+        button.addView(ui.text(hours, 16, paused ? Ui.SECONDARY : Ui.ACCENT, true));
         java.time.ZonedDateTime alarmTime = shift.startsAt().minusMinutes(shift.lead);
         String alarm = shift.lead < 0 ? "Bez budzika" : "Budzik " + alarmTime.format(TIME);
         if (shift.lead >= 0 && !alarmTime.toLocalDate().equals(date)) {
@@ -526,7 +511,7 @@ public final class MainActivity extends Activity {
 
     void shareSchedule(LocalDate date, boolean monthly) {
         boolean[] detailedAbsences = {false};
-        new AlertDialog.Builder(this).setTitle(monthly ? "Udostępnij miesiąc" : "Udostępnij tydzień")
+        ui.sheet().setTitle(monthly ? "Udostępnij miesiąc" : "Udostępnij tydzień")
                 .setMultiChoiceItems(new String[]{"Pokaż rodzaje dni wolnych (np. urlop i L4)"},
                         detailedAbsences, (dialog, which, checked) -> detailedAbsences[0] = checked)
                 .setNegativeButton("Anuluj", null).setPositiveButton("Udostępnij PDF", (dialog, which) ->
@@ -555,7 +540,7 @@ public final class MainActivity extends Activity {
 
     private void dayActions(LocalDate date) {
         DayPlan plan = Store.days(this).getOrDefault(date, DayPlan.EMPTY);
-        new AlertDialog.Builder(this).setTitle(date.format(FULL_DATE))
+        ui.sheet().setTitle(date.format(FULL_DATE))
                 .setItems(new String[]{"Dodaj zmianę", "Oznacz dzień",
                         plan.nightDuty ? "Usuń dyżur nocny" : "Dodaj dyżur nocny"}, (dialog, which) -> {
                     if (which == 0) {
@@ -575,7 +560,7 @@ public final class MainActivity extends Activity {
         for (int day = 0; day < 7; day++) {
             dates.add(selectedWeek.plusDays(day));
         }
-        new AlertDialog.Builder(this).setTitle("Oznaczenia tygodnia")
+        ui.sheet().setTitle("Oznaczenia tygodnia")
                 .setItems(new String[]{"Dyżur nocny na cały tydzień", "Usuń dyżury z tygodnia",
                         "Oznacz dni wolne w tygodniu"}, (dialog, which) -> {
                     if (which == 2) {
@@ -592,7 +577,7 @@ public final class MainActivity extends Activity {
         for (int i = 0; i < statuses.length; i++) {
             labels[i] = statuses[i].label;
         }
-        new AlertDialog.Builder(this).setTitle("Oznaczenie dnia")
+        ui.sheet().setTitle("Oznaczenie dnia")
                 .setItems(labels, (dialog, which) -> selected.accept(statuses[which]))
                 .setNegativeButton("Anuluj", null).show();
     }
@@ -603,7 +588,7 @@ public final class MainActivity extends Activity {
         for (int day = 0; day < labels.length; day++) {
             labels[day] = start.plusDays(day).format(FULL_DATE);
         }
-        AlertDialog picker = new AlertDialog.Builder(this).setTitle(status.label)
+        AlertDialog picker = ui.sheet().setTitle(status.label)
                 .setMultiChoiceItems(labels, null, (dialog, which, checked) -> {
                     LocalDate date = start.plusDays(which);
                     if (checked) {
@@ -630,7 +615,7 @@ public final class MainActivity extends Activity {
                 !shift.deleted && dates.contains(shift.date)
                         && !days.getOrDefault(shift.date, DayPlan.EMPTY).isAbsent());
         if (hasActiveShifts) {
-            new AlertDialog.Builder(this).setTitle("Oznaczyć jako „" + status.label + "”?")
+            ui.dialog().setTitle("Oznaczyć jako „" + status.label + "”?")
                     .setMessage("Zmiany rozpoczynające się w tych dniach zostaną wstrzymane wraz z budzikami, przypomnieniami i powiązanymi wydarzeniami „Praca”.")
                     .setNegativeButton("Anuluj", null)
                     .setPositiveButton("Oznacz", (dialog, which) -> save.run()).show();
@@ -740,7 +725,7 @@ public final class MainActivity extends Activity {
             toast("Brak zmian do skopiowania z poprzedniego tygodnia.");
             return;
         }
-        new AlertDialog.Builder(this).setTitle("Kopiuj poprzedni tydzień")
+        ui.dialog().setTitle("Kopiuj poprzedni tydzień")
                 .setMessage("Skopiować godziny i ustawienia budzików do pustych dni w tym tygodniu?")
                 .setNegativeButton("Anuluj", null)
                 .setPositiveButton("Kopiuj", (dialog, which) -> saveWeek(destination, candidates, true))
@@ -845,19 +830,25 @@ public final class MainActivity extends Activity {
     private void settings() {
         EditText lead = minutesField(Store.defaultLead(this));
         LinearLayout fields = ui.column();
-        fields.setPadding(ui.dp(22), ui.dp(8), ui.dp(22), ui.dp(12));
-        fields.addView(ui.text("Domyślny budzik przed nową zmianą (minuty)", 15, Ui.INK, true));
+        fields.setPadding(ui.dp(24), ui.dp(12), ui.dp(24), ui.dp(16));
+        fields.setFocusableInTouchMode(true);
+        fields.addView(ui.heading("Budzik", 19, Ui.INK));
+        ui.space(fields, 4);
+        fields.addView(ui.text("Domyślne wyprzedzenie (w minutach)", 14, Ui.SECONDARY, false));
+        ui.space(fields, 6);
+        lead.setContentDescription("Domyślne wyprzedzenie budzika w minutach");
         fields.addView(lead);
-        ui.space(fields, 12);
+        ui.space(fields, 14);
+        ui.divider(fields, 0);
+        ui.space(fields, 10);
 
-        Switch reminders = new Switch(this);
-        reminders.setText("Powiadomienia o zmianach");
-        reminders.setMinHeight(ui.dp(48));
-        reminders.setChecked(Reminders.enabled(this));
+        Switch reminders = ui.toggle("Powiadomienia o zmianach", Reminders.enabled(this));
         fields.addView(reminders);
         LinearLayout reminderTime = ui.column();
         reminderTime.addView(ui.text("Ile minut przed zmianą?", 14, Ui.SECONDARY, true));
         EditText reminderLead = minutesField(Reminders.lead(this));
+        ui.space(reminderTime, 6);
+        reminderLead.setContentDescription("Wyprzedzenie powiadomienia w minutach");
         reminderTime.addView(reminderLead);
         reminderTime.setVisibility(reminders.isChecked() ? View.VISIBLE : View.GONE);
         reminders.setOnCheckedChangeListener((view, checked) ->
@@ -867,10 +858,12 @@ public final class MainActivity extends Activity {
         fields.addView(ui.button("Kategorie powiadomień", false, this::notificationCategories));
         ui.space(fields, 12);
 
-        AlertDialog dialog = new AlertDialog.Builder(this).setTitle("Ustawienia")
+        AlertDialog dialog = ui.sheet().setTitle("Ustawienia")
                 .setView(dialogScroll(fields)).setNegativeButton("Zamknij", null)
                 .setPositiveButton("Zapisz", null).create();
-        fields.addView(ui.text("Kalendarz Google", 18, Ui.INK, true));
+        ui.divider(fields, 0);
+        ui.space(fields, 14);
+        fields.addView(ui.heading("Kalendarz Google", 19, Ui.INK));
         ui.space(fields, 5);
         calendarStatus = ui.text("", 14, Ui.SECONDARY, false);
         fields.addView(calendarStatus);
@@ -905,7 +898,7 @@ public final class MainActivity extends Activity {
         fields.addView(ui.button("O aplikacji", false, this::about));
 
         dialog.show();
-        dialog.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+        fields.requestFocus();
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(ignored -> {
             Integer minutes = readMinutes(lead);
             if (minutes == null) {
@@ -938,8 +931,21 @@ public final class MainActivity extends Activity {
         } catch (PackageManager.NameNotFoundException exception) {
             version = "Numer wersji niedostępny";
         }
-        new AlertDialog.Builder(this).setTitle("Grafik pracy")
-                .setMessage(version + "\n\nPlanuj pojedyncze zmiany lub cały tydzień. Aplikacja podpowiada godzinę końca, ustawia budziki i wysyła powiadomienia przed zmianą.\n\nW widoku miesiąca sprawdzisz zmiany, dni wolne i dyżury. W podsumowaniu ustawisz roczną pulę urlopu.\n\nOznaczenia dni są zapisane na telefonie. Zmiany można synchronizować z Kalendarzem Google.")
+        LinearLayout content = ui.column();
+        content.setPadding(ui.dp(24), ui.dp(14), ui.dp(24), ui.dp(16));
+        LinearLayout identity = ui.row();
+        identity.setBackground(ui.shape(Ui.TINT, 20, 0));
+        identity.setPadding(ui.dp(10), ui.dp(10), ui.dp(12), ui.dp(10));
+        ImageView logo = new ImageView(this);
+        logo.setImageResource(R.drawable.ic_grafik);
+        identity.addView(logo, new LinearLayout.LayoutParams(ui.dp(42), ui.dp(42)));
+        ui.gap(identity, 10);
+        identity.addView(ui.text(version, 15, Ui.ACCENT, true), ui.weight());
+        content.addView(identity);
+        ui.space(content, 14);
+        content.addView(ui.text("Zaplanuj zmiany, dyżury i dni wolne. Sprawdź godziny pracy i dostępną pulę urlopu.\n\nGrafik jest zapisany na telefonie. Zmiany możesz też synchronizować z Kalendarzem Google.",
+                15, Ui.SECONDARY, false));
+        ui.dialog().setTitle("Grafik pracy").setView(dialogScroll(content))
                 .setPositiveButton("Zamknij", null).show();
     }
 
@@ -960,6 +966,7 @@ public final class MainActivity extends Activity {
         field.setSelectAllOnFocus(true);
         field.setSingleLine();
         field.setText(String.valueOf(minutes));
+        ui.field(field);
         return field;
     }
 
@@ -978,6 +985,7 @@ public final class MainActivity extends Activity {
 
     ScrollView dialogScroll(LinearLayout fields) {
         ScrollView container = new ScrollView(this);
+        container.setVerticalScrollBarEnabled(false);
         container.addView(fields);
         return container;
     }
@@ -1006,13 +1014,13 @@ public final class MainActivity extends Activity {
                         return;
                     }
                     if (choices.isEmpty()) {
-                        new AlertDialog.Builder(this).setTitle("Brak dostępnego kalendarza Google")
+                        ui.dialog().setTitle("Brak dostępnego kalendarza Google")
                                 .setMessage("Dodaj konto Google w ustawieniach telefonu i włącz synchronizację Kalendarza.")
                                 .setPositiveButton("OK", null).show();
                         return;
                     }
                     String[] names = choices.stream().map(choice -> choice.label).toArray(String[]::new);
-                    new AlertDialog.Builder(this).setTitle("Wybierz kalendarz Google")
+                    ui.dialog().setTitle("Wybierz kalendarz Google")
                             .setItems(names, (dialog, index) -> setCalendar(choices.get(index)))
                             .setNegativeButton("Anuluj", null).show();
                 });
@@ -1027,7 +1035,7 @@ public final class MainActivity extends Activity {
         String question = current >= 0 && current != choice.id
                 ? "Zmiany zapisane przez aplikację zostaną przeniesione do tego kalendarza."
                 : "Twoje zapisane zmiany pojawią się w tym kalendarzu.";
-        new AlertDialog.Builder(this).setTitle(choice.label).setMessage(question)
+        ui.dialog().setTitle(choice.label).setMessage(question)
                 .setNegativeButton("Anuluj", null).setPositiveButton("Połącz", (dialog, ignored) ->
                         DISK.execute(() -> {
                             if (!Store.prefs(this).edit().putLong("calendar_id", choice.id)
@@ -1056,11 +1064,11 @@ public final class MainActivity extends Activity {
         NotificationChannels.register(this);
         LinearLayout content = ui.column();
         content.setPadding(ui.dp(18), ui.dp(8), ui.dp(18), ui.dp(12));
-        AlertDialog categories = new AlertDialog.Builder(this).setTitle("Kategorie powiadomień")
+        AlertDialog categories = ui.sheet().setTitle("Kategorie powiadomień")
                 .setView(dialogScroll(content)).setPositiveButton("Zamknij", null).create();
         addNotificationCategory(content, categories, manager, NotificationChannels.REMINDER,
                 "Przypomnienia o zmianach", "Godziny zmiany i opcja Za 15 min.");
-        ui.space(content, 8);
+        ui.divider(content, 10);
         addNotificationCategory(content, categories, manager, NotificationChannels.ALARM,
                 "Budzik przed pracą", "Powiadomienie z przyciskiem wyłączenia budzika.");
         categories.show();
@@ -1080,7 +1088,7 @@ public final class MainActivity extends Activity {
         statusLabel.setPadding(0, ui.dp(4), 0, 0);
         card.addView(statusLabel);
         card.setContentDescription(title + ", " + detail + " " + status + ", otwórz ustawienia kanału");
-        ui.action(card, Ui.TINT, 13, 0, () -> {
+        ui.action(card, 0, 16, 0, () -> {
             categories.dismiss();
             openSystemNotificationSettings(id);
         });

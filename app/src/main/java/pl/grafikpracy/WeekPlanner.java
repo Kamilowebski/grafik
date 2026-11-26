@@ -2,7 +2,6 @@ package pl.grafikpracy;
 
 import android.app.AlertDialog;
 import android.view.View;
-import android.view.WindowManager;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -41,21 +40,23 @@ final class WeekPlanner {
 
     void show(String weekRange) {
         LinearLayout form = ui.column();
-        form.setPadding(ui.dp(18), ui.dp(8), ui.dp(18), ui.dp(12));
+        form.setPadding(ui.dp(24), ui.dp(12), ui.dp(24), ui.dp(16));
         form.setFocusableInTouchMode(true);
         form.addView(ui.text(weekRange, 15, Ui.SECONDARY, true));
         ui.space(form, 12);
-        form.addView(ui.text("Wspólne godziny", 19, Ui.INK, true));
+        form.addView(ui.heading("Wspólne godziny", 19, Ui.INK));
         ui.space(form, 5);
         template = new ShiftHours.Controls(activity, ui, form, ShiftHours.DEFAULT, this::refresh);
         ui.space(form, 16);
 
+        form.addView(ui.heading("Dni pracy", 19, Ui.INK));
+        ui.space(form, 5);
         LinearLayout presets = ui.row();
-        presets.addView(ui.button("Pon.–pt.", false, () -> select(5)), ui.weight());
+        addPreset(presets, "Pon.–pt.", 5);
         ui.gap(presets, 6);
-        presets.addView(ui.button("Wszystkie", false, () -> select(7)), ui.weight());
+        addPreset(presets, "Wszystkie", 7);
         ui.gap(presets, 6);
-        presets.addView(ui.button("Wyczyść", false, () -> select(0)), ui.weight());
+        addPreset(presets, "Wyczyść", 0);
         form.addView(presets);
         ui.space(form, 6);
         for (int index = 0; index < days.length; index++) {
@@ -65,16 +66,18 @@ final class WeekPlanner {
         ui.space(form, 8);
         summary = ui.text("", 15, Ui.ACCENT, true);
         summary.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
+        summary.setBackground(ui.shape(Ui.TINT, 17, 0));
+        summary.setPadding(ui.dp(14), ui.dp(10), ui.dp(14), ui.dp(10));
         form.addView(summary);
         ui.space(form, 8);
-        alarm = new Switch(activity);
-        alarm.setText("Ustaw budziki");
-        alarm.setMinHeight(ui.dp(48));
-        alarm.setChecked(true);
+        ui.divider(form, 0);
+        alarm = ui.toggle("Ustaw budziki", true);
         form.addView(alarm);
         LinearLayout leadGroup = ui.column();
         leadGroup.addView(ui.text("Ile minut przed każdą zmianą?", 14, Ui.SECONDARY, true));
         lead = activity.minutesField(Store.defaultLead(activity));
+        ui.space(leadGroup, 6);
+        lead.setContentDescription("Ile minut przed każdą zmianą?");
         leadGroup.addView(lead);
         form.addView(leadGroup);
         alarm.setOnCheckedChangeListener((view, checked) -> leadGroup.setVisibility(checked ? View.VISIBLE : View.GONE));
@@ -84,27 +87,40 @@ final class WeekPlanner {
         form.addView(error);
         refresh();
 
-        AlertDialog dialog = new AlertDialog.Builder(activity).setTitle("Zaplanuj tydzień")
+        AlertDialog dialog = ui.sheet().setTitle("Zaplanuj tydzień")
                 .setView(activity.dialogScroll(form)).setNegativeButton("Anuluj", null)
                 .setPositiveButton("Zapisz tydzień", null).create();
         dialog.show();
         form.requestFocus();
-        dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(button -> save(dialog));
     }
 
+    private void addPreset(LinearLayout presets, String label, int count) {
+        TextView button = ui.button(label, false, () -> select(count));
+        button.setTextSize(14);
+        button.setPadding(ui.dp(5), ui.dp(6), ui.dp(5), ui.dp(6));
+        presets.addView(button, ui.weight());
+    }
+
     private void addDay(LinearLayout form, int index) {
+        if (index > 0) {
+            ui.divider(form, 0);
+        }
         LinearLayout row = ui.row();
         CheckBox checkbox = new CheckBox(activity);
         checkbox.setMinHeight(ui.dp(48));
         checkbox.setText(monday.plusDays(index).format(DATE));
         checkbox.setTextColor(Ui.INK);
+        checkbox.setTextSize(14);
         checkbox.setChecked(index < 5);
         days[index] = checkbox;
         row.addView(checkbox, ui.weight());
 
-        TextView preview = ui.button("", false, () -> customize(index));
-        preview.setTextSize(13);
+        TextView preview = ui.text("", 13, Ui.SECONDARY, true);
+        preview.setGravity(android.view.Gravity.CENTER);
+        preview.setMinHeight(ui.dp(48));
+        preview.setPadding(ui.dp(8), 0, ui.dp(8), 0);
+        ui.action(preview, 0, 18, 0, () -> customize(index));
         previews[index] = preview;
         row.addView(preview);
         checkbox.setOnClickListener(view -> refresh());
@@ -115,7 +131,7 @@ final class WeekPlanner {
         LinearLayout content = ui.column();
         content.setPadding(ui.dp(18), ui.dp(10), ui.dp(18), ui.dp(8));
         ShiftHours.Controls controls = new ShiftHours.Controls(activity, ui, content, hours(index), () -> {});
-        new AlertDialog.Builder(activity).setTitle(monday.plusDays(index).format(DATE))
+        ui.dialog().setTitle(monday.plusDays(index).format(DATE))
                 .setView(content).setNegativeButton("Anuluj", null)
                 .setNeutralButton("Wspólne godziny", (dialog, which) -> {
                     customHours[index] = null;

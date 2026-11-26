@@ -66,16 +66,18 @@ final class ShiftHours {
             this.value = initial;
             this.onChange = onChange;
 
-            startButton = ui.button("", false, () -> timePicker(true));
-            durationButton = ui.button("", false, this::durationPicker);
-            endButton = ui.button("", false, () -> timePicker(false));
+            startButton = ui.text("", 17, Ui.ACCENT, true);
+            durationButton = ui.text("", 17, Ui.ACCENT, true);
+            endButton = ui.text("", 17, Ui.ACCENT, true);
             LinearLayout row = ui.row();
             row.setGravity(Gravity.TOP);
-            addField(row, "Początek", startButton);
-            ui.gap(row, 8);
-            addField(row, "Czas pracy", durationButton);
-            ui.gap(row, 8);
-            addField(row, "Koniec", endButton);
+            row.setPadding(ui.dp(4), ui.dp(5), ui.dp(4), ui.dp(5));
+            row.setBackground(ui.shape(Ui.BACKGROUND, 20, 0));
+            addField(row, "Początek", startButton, () -> timePicker(true));
+            ui.gap(row, 3);
+            addField(row, "Czas pracy", durationButton, this::durationPicker);
+            ui.gap(row, 3);
+            addField(row, "Koniec", endButton, () -> timePicker(false));
             container.addView(row);
             render();
         }
@@ -84,10 +86,15 @@ final class ShiftHours {
             return value;
         }
 
-        private void addField(LinearLayout row, String label, TextView button) {
+        private void addField(LinearLayout row, String label, TextView button, Runnable action) {
             LinearLayout field = ui.column();
-            field.addView(ui.text(label, 12, Ui.SECONDARY, true));
-            ui.space(field, 4);
+            TextView caption = ui.text(label, 12, Ui.SECONDARY, true);
+            caption.setGravity(Gravity.CENTER);
+            field.addView(caption);
+            button.setGravity(Gravity.CENTER);
+            button.setMinimumHeight(ui.dp(48));
+            ui.action(button, 0, 16, 0, action);
+            button.setPadding(ui.dp(3), ui.dp(3), ui.dp(3), ui.dp(3));
             field.addView(button);
             row.addView(field, ui.weight());
         }
@@ -111,13 +118,14 @@ final class ShiftHours {
 
         private void timePicker(boolean pickingStart) {
             LocalTime time = pickingStart ? value.start : value.end();
-            new TimePickerDialog(activity, (picker, hour, minute) -> {
+            TimePickerDialog picker = new TimePickerDialog(activity, (view, hour, minute) -> {
                 LocalTime selected = LocalTime.of(hour, minute);
                 int interval = Math.floorMod(selected.toSecondOfDay() / 60
                         - value.start.toSecondOfDay() / 60, 1440);
                 update(pickingStart ? new ShiftHours(selected, value.minutes)
                         : new ShiftHours(value.start, interval == 0 ? 1440 : interval));
-            }, time.getHour(), time.getMinute(), true).show();
+            }, time.getHour(), time.getMinute(), true);
+            ui.showPicker(picker);
         }
 
         private void durationPicker() {
@@ -128,7 +136,7 @@ final class ShiftHours {
             addPicker(row, hours, "godziny");
             ui.gap(row, 24);
             addPicker(row, minutes, "minuty");
-            AlertDialog dialog = new AlertDialog.Builder(activity).setTitle("Ile trwa zmiana?")
+            AlertDialog dialog = ui.dialog().setTitle("Ile trwa zmiana?")
                     .setView(row).setNegativeButton("Anuluj", null).setPositiveButton("Ustaw", null).create();
             dialog.show();
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(button -> {

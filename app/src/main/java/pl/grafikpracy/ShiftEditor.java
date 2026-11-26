@@ -3,7 +3,6 @@ package pl.grafikpracy;
 import android.app.AlertDialog;
 import android.app.DatePickerDialog;
 import android.view.View;
-import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.Switch;
@@ -39,10 +38,14 @@ final class ShiftEditor {
 
     void show() {
         LinearLayout fields = ui.column();
-        fields.setPadding(ui.dp(20), ui.dp(8), ui.dp(20), ui.dp(12));
+        fields.setPadding(ui.dp(24), ui.dp(12), ui.dp(24), ui.dp(16));
         fields.setFocusableInTouchMode(true);
         dateButton = ui.button("", false, this::pickDate);
         fields.addView(ui.text("Dzień zmiany", 14, Ui.SECONDARY, true));
+        dateButton.setGravity(android.view.Gravity.START | android.view.Gravity.CENTER_VERTICAL);
+        dateButton.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.drawer_month, 0, 0, 0);
+        dateButton.setCompoundDrawableTintList(android.content.res.ColorStateList.valueOf(Ui.ACCENT));
+        dateButton.setCompoundDrawablePadding(ui.dp(12));
         ui.space(fields, 4);
         fields.addView(dateButton);
         ui.space(fields, 12);
@@ -53,18 +56,18 @@ final class ShiftEditor {
         overnightHint = ui.text("Koniec zmiany następnego dnia", 13, Ui.SECONDARY, false);
         overnightHint.setPadding(0, ui.dp(6), 0, 0);
         fields.addView(overnightHint);
-        ui.space(fields, 12);
+        ui.space(fields, 14);
+        ui.divider(fields, 0);
+        ui.space(fields, 5);
 
-        alarm = new Switch(activity);
-        alarm.setText("Ustaw budzik");
-        alarm.setTextSize(16);
-        alarm.setMinHeight(ui.dp(48));
-        alarm.setChecked(original == null || original.lead >= 0);
+        alarm = ui.toggle("Ustaw budzik", original == null || original.lead >= 0);
         fields.addView(alarm);
         leadGroup = ui.column();
         leadGroup.addView(ui.text("Ile minut przed zmianą?", 14, Ui.SECONDARY, true));
         lead = activity.minutesField(original != null && original.lead >= 0
                 ? original.lead : Store.defaultLead(activity));
+        ui.space(leadGroup, 6);
+        lead.setContentDescription("Ile minut przed zmianą?");
         leadGroup.addView(lead);
         fields.addView(leadGroup);
         leadGroup.setVisibility(alarm.isChecked() ? View.VISIBLE : View.GONE);
@@ -75,7 +78,7 @@ final class ShiftEditor {
         fields.addView(error);
         updateFields();
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(activity)
+        AlertDialog.Builder builder = ui.sheet()
                 .setTitle(original == null ? "Dodaj zmianę" : "Edytuj zmianę")
                 .setView(activity.dialogScroll(fields)).setNegativeButton("Anuluj", null)
                 .setPositiveButton("Zapisz", null);
@@ -85,11 +88,10 @@ final class ShiftEditor {
         AlertDialog dialog = builder.create();
         dialog.show();
         fields.requestFocus();
-        dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(ignored -> save(dialog));
         if (original != null) {
             dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(ignored ->
-                    new AlertDialog.Builder(activity).setTitle("Usunąć zmianę?")
+                    ui.dialog().setTitle("Usunąć zmianę?")
                             .setMessage("Budzik i powiązane wydarzenie z tej zmiany też zostaną usunięte.")
                             .setNegativeButton("Anuluj", null).setPositiveButton("Usuń", (confirm, which) -> {
                                 activity.deleteShift(original);
@@ -99,10 +101,11 @@ final class ShiftEditor {
     }
 
     private void pickDate() {
-        new DatePickerDialog(activity, (picker, year, month, day) -> {
+        DatePickerDialog picker = new DatePickerDialog(activity, (view, year, month, day) -> {
             date = LocalDate.of(year, month + 1, day);
             updateFields();
-        }, date.getYear(), date.getMonthValue() - 1, date.getDayOfMonth()).show();
+        }, date.getYear(), date.getMonthValue() - 1, date.getDayOfMonth());
+        ui.showPicker(picker);
     }
 
     private void updateFields() {

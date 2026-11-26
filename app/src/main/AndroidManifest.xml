@@ -22,6 +22,7 @@
             </intent-filter>
         </activity>
         <activity android:name=".AlarmActivity" android:exported="false"
+            android:theme="@style/AlarmTheme"
             android:showWhenLocked="true" android:turnScreenOn="true" tools:targetApi="27" />
         <receiver android:name=".AlarmReceiver" android:exported="false">
             <intent-filter>

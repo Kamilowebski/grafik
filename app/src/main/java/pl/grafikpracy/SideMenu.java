@@ -27,13 +27,14 @@ final class SideMenu extends FrameLayout {
         setLayoutDirection(LAYOUT_DIRECTION_LTR);
         this.onClosed = onClosed;
         shade = new View(context);
-        shade.setBackgroundColor(0x80191C3A);
+        shade.setBackgroundColor(0x681C1641);
         shade.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
         shade.setOnClickListener(view -> dismiss());
         addView(shade, new LayoutParams(-1, -1));
 
         panel = ui.column();
-        panel.setBackgroundColor(Ui.WHITE);
+        panel.setBackground(ui.shape(Ui.WHITE, 28, 0));
+        panel.setClipToOutline(true);
         panel.setClickable(true);
         panel.setElevation(ui.dp(10));
         if (Build.VERSION.SDK_INT >= 28) {
@@ -41,22 +42,22 @@ final class SideMenu extends FrameLayout {
         }
 
         LinearLayout heading = ui.row();
-        heading.setPadding(ui.dp(14), ui.dp(10), ui.dp(9), ui.dp(10));
+        heading.setPadding(ui.dp(15), ui.dp(12), ui.dp(8), ui.dp(12));
         heading.setBackground(ui.weekBackground());
         ImageView logo = new ImageView(context);
         logo.setImageResource(R.drawable.ic_grafik);
         heading.addView(logo, new LinearLayout.LayoutParams(ui.dp(34), ui.dp(34)));
         ui.gap(heading, 9);
-        heading.addView(ui.text("Grafik pracy", 19, Ui.WHITE, true), ui.weight());
+        heading.addView(ui.heading("Grafik pracy", 21, Ui.WHITE), ui.weight());
         ImageView close = new ImageView(context);
         close.setImageResource(R.drawable.drawer_close);
         close.setImageTintList(ColorStateList.valueOf(Ui.WHITE));
         close.setPadding(ui.dp(12), ui.dp(12), ui.dp(12), ui.dp(12));
         close.setContentDescription("Zamknij menu");
-        ui.action(close, 0x28FFFFFF, 12, 0, this::dismiss);
+        ui.action(close, 0x20FFFFFF, 24, 0, this::dismiss);
         heading.addView(close, new LinearLayout.LayoutParams(ui.dp(48), ui.dp(48)));
         LinearLayout.LayoutParams banner = new LinearLayout.LayoutParams(-1, -2);
-        banner.setMargins(ui.dp(9), ui.dp(9), ui.dp(9), ui.dp(6));
+        banner.setMargins(ui.dp(10), ui.dp(10), ui.dp(10), ui.dp(8));
         panel.addView(heading, banner);
 
         ScrollView itemScroll = new ScrollView(context);
@@ -71,17 +72,18 @@ final class SideMenu extends FrameLayout {
     void add(int icon, String label, Runnable action) {
         LinearLayout row = ui.row();
         row.setPadding(ui.dp(7), ui.dp(2), ui.dp(8), ui.dp(2));
-        row.setMinimumHeight(ui.dp(48));
+        row.setMinimumHeight(ui.dp(52));
         ImageView image = new ImageView(getContext());
         image.setImageResource(icon);
         image.setPadding(ui.dp(7), ui.dp(7), ui.dp(7), ui.dp(7));
-        image.setBackground(ui.shape(Ui.TINT, 10, 0));
+        image.setBackground(ui.shape(Ui.TINT, 20, 0));
+        image.setImageTintList(ColorStateList.valueOf(Ui.ACCENT));
         image.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
         row.addView(image, new LinearLayout.LayoutParams(ui.dp(35), ui.dp(35)));
         ui.gap(row, 11);
         row.addView(ui.text(label, 15, Ui.INK, true), ui.weight());
         row.setContentDescription(label);
-        ui.action(row, 0, 12, 0, () -> dismiss(action));
+        ui.action(row, 0, 18, 0, () -> dismiss(action));
         items.addView(row);
     }
 
@@ -96,10 +98,12 @@ final class SideMenu extends FrameLayout {
     void show(FrameLayout host) {
         int usableWidth = host.getWidth() - host.getPaddingLeft() - host.getPaddingRight();
         int width = Math.min(ui.dp(328), Math.max(1, usableWidth - ui.dp(40)));
-        addView(panel, new LayoutParams(width, -1, Gravity.START));
+        LayoutParams position = new LayoutParams(width, -1, Gravity.START);
+        position.setMargins(ui.dp(7), ui.dp(4), ui.dp(7), ui.dp(4));
+        addView(panel, position);
         host.addView(this, new LayoutParams(-1, -1));
         if (ValueAnimator.areAnimatorsEnabled()) {
-            panel.setTranslationX(-width);
+            panel.setTranslationX(-width - ui.dp(7));
             shade.setAlpha(0f);
             shade.animate().alpha(1f).setDuration(230).start();
             panel.animate().translationX(0f).setDuration(250)
@@ -133,7 +137,7 @@ final class SideMenu extends FrameLayout {
             return;
         }
         shade.animate().alpha(0f).setDuration(170).start();
-        panel.animate().translationX(-panel.getWidth()).setDuration(190)
+        panel.animate().translationX(-panel.getWidth() - ui.dp(7)).setDuration(190)
                 .withEndAction(remove).start();
     }
 }

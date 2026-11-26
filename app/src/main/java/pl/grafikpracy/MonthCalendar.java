@@ -6,7 +6,9 @@ import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.view.Gravity;
 import android.view.View;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
 import java.time.LocalDate;
@@ -24,8 +26,8 @@ final class MonthCalendar {
     private static final DateTimeFormatter MONTH = DateTimeFormatter.ofPattern("LLLL yyyy", PL);
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("EEEE, d MMMM", PL);
     private static final int WORK = Ui.ACCENT;
-    private static final int ABSENCE = 0xFFB44652;
-    private static final int DUTY = 0xFF276A82;
+    private static final int ABSENCE = Ui.LEAVE;
+    private static final int DUTY = Ui.DUTY;
 
     private final MainActivity activity;
     private final Ui ui;
@@ -44,56 +46,82 @@ final class MonthCalendar {
 
     void show() {
         LinearLayout body = ui.column();
-        body.setPadding(ui.dp(12), ui.dp(6), ui.dp(12), ui.dp(12));
+        body.setPadding(ui.dp(16), ui.dp(5), ui.dp(16), ui.dp(16));
         LinearLayout controls = ui.row();
         TextView back = ui.button("‹  Tydzień", false, activity::closeMonthPage);
         back.setContentDescription("Wróć do tygodnia");
-        controls.addView(back, ui.weight());
-        ui.gap(controls, 8);
+        controls.addView(back);
+        controls.addView(new View(activity), ui.weight());
         controls.addView(ui.button("Udostępnij", true, () -> {
             activity.closeMonthPage();
             activity.shareSchedule(month.atDay(1), true);
-        }), ui.weight());
+        }));
         body.addView(controls);
         ui.space(body, 10);
+        LinearLayout calendar = ui.column();
+        calendar.setBackground(ui.shape(Ui.WHITE, 26, 0));
+        calendar.setPadding(ui.dp(8), ui.dp(8), ui.dp(8), ui.dp(8));
         LinearLayout navigation = ui.row();
-        TextView previous = ui.button("‹", false, () -> move(-1));
-        previous.setContentDescription("Poprzedni miesiąc");
-        navigation.addView(previous, new LinearLayout.LayoutParams(ui.dp(48), -2));
-        title = ui.text("", 19, Ui.INK, true);
+        View previous = ui.arrow("Poprzedni miesiąc", true, false, () -> move(-1));
+        navigation.addView(previous, new LinearLayout.LayoutParams(ui.dp(48), ui.dp(48)));
+        title = ui.heading("", 23, Ui.INK);
         title.setGravity(Gravity.CENTER);
         navigation.addView(title, ui.weight());
-        TextView next = ui.button("›", false, () -> move(1));
-        next.setContentDescription("Następny miesiąc");
-        navigation.addView(next, new LinearLayout.LayoutParams(ui.dp(48), -2));
-        body.addView(navigation);
+        View next = ui.arrow("Następny miesiąc", false, false, () -> move(1));
+        navigation.addView(next, new LinearLayout.LayoutParams(ui.dp(48), ui.dp(48)));
+        calendar.addView(navigation);
 
-        ui.space(body, 10);
+        ui.space(calendar, 12);
         LinearLayout weekdays = ui.row();
         for (String label : new String[]{"Tydz.", "Pn", "Wt", "Śr", "Cz", "Pt", "So", "Nd"}) {
             TextView cell = ui.text(label, 12, Ui.SECONDARY, true);
             cell.setGravity(Gravity.CENTER);
             weekdays.addView(cell, ui.weight());
         }
-        body.addView(weekdays);
-        ui.space(body, 4);
+        calendar.addView(weekdays);
+        ui.space(calendar, 7);
+        ui.divider(calendar, 8);
         grid = ui.column();
-        body.addView(grid);
-        ui.space(body, 10);
+        calendar.addView(grid);
+        body.addView(calendar);
+        ui.space(body, 12);
+        LinearLayout overview = ui.column();
+        overview.setBackground(ui.shape(Ui.TINT, 22, 0));
+        overview.setPadding(ui.dp(14), ui.dp(12), ui.dp(14), ui.dp(12));
         summary = ui.text("", 15, Ui.INK, true);
-        body.addView(summary);
+        overview.addView(summary);
 
-        ui.space(body, 7);
+        ui.space(overview, 8);
         LinearLayout legend = ui.row();
         addLegend(legend, "Praca", WORK);
         addLegend(legend, "Wolne", ABSENCE);
         addLegend(legend, "Dyżur nocny", DUTY);
-        body.addView(legend);
+        overview.addView(legend);
+        body.addView(overview);
 
         SwipeScrollView page = new SwipeScrollView(activity, this::move);
-        page.addView(body);
+        page.addView(body, new ScrollView.LayoutParams(-1, -2));
+        View.OnLayoutChangeListener fitCalendar =
+                (view, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) ->
+                        fitRows(page.getHeight() - (body.getHeight() - grid.getHeight()));
+        grid.addOnLayoutChangeListener(fitCalendar);
+        page.addOnLayoutChangeListener(fitCalendar);
         refresh();
         activity.showMonthPage(page);
+    }
+
+    private void fitRows(int availableHeight) {
+        int rows = (grid.getChildCount() + 1) / 2;
+        if (rows == 0 || availableHeight <= 0) {
+            return;
+        }
+        int height = Math.max(ui.dp(47), (availableHeight - (rows - 1) * ui.dp(1)) / rows);
+        for (int index = 0; index < grid.getChildCount(); index += 2) {
+            View row = grid.getChildAt(index);
+            if (row.getLayoutParams().height != height) {
+                row.setLayoutParams(new LinearLayout.LayoutParams(-1, height));
+            }
+        }
     }
 
     private void move(int direction) {
@@ -106,7 +134,8 @@ final class MonthCalendar {
         LocalDate first = month.atDay(1);
         LocalDate after = first.plusMonths(1);
         LocalDate today = LocalDate.now();
-        title.setText(first.format(MONTH));
+        String monthLabel = first.format(MONTH);
+        title.setText(monthLabel.substring(0, 1).toUpperCase(PL) + monthLabel.substring(1));
         grid.removeAllViews();
         List<Shift> shifts = Store.shifts(activity);
         Map<LocalDate, DayPlan> plans = Store.days(activity);
@@ -121,6 +150,9 @@ final class MonthCalendar {
         int offset = first.getDayOfWeek().getValue() - 1;
         int cellCount = offset + month.lengthOfMonth();
         for (int rowStart = 0; rowStart < cellCount; rowStart += 7) {
+            if (rowStart > 0) {
+                ui.divider(grid, 7);
+            }
             LinearLayout row = ui.row();
             int weekNumber = MainActivity.weekNumber(first.minusDays(offset).plusDays(rowStart));
             TextView number = ui.text(String.valueOf(weekNumber), 12, Ui.ACCENT, true);
@@ -131,9 +163,9 @@ final class MonthCalendar {
                 int day = rowStart + column - offset + 1;
                 View cell = day < 1 || day > month.lengthOfMonth() ? new View(activity)
                         : dayCell(month.atDay(day), today, workDays, plans);
-                row.addView(cell, new LinearLayout.LayoutParams(0, ui.dp(44), 1));
+                row.addView(cell, new LinearLayout.LayoutParams(0, -1, 1));
             }
-            grid.addView(row);
+            grid.addView(row, new LinearLayout.LayoutParams(-1, ui.dp(47)));
         }
         ScheduleTotals totals = ScheduleTotals.forPeriod(shifts, plans, first, after);
         summary.setText(ShiftHours.durationLabel(totals.minutes) + " pracy  ·  "
@@ -144,8 +176,16 @@ final class MonthCalendar {
             Map<LocalDate, DayPlan> plans) {
         DayPlan plan = plans.getOrDefault(date, DayPlan.EMPTY);
         boolean work = workDays.contains(date);
-        TextView cell = ui.text(String.valueOf(date.getDayOfMonth()), 14, Ui.INK, date.equals(today));
-        cell.setGravity(Gravity.CENTER);
+        boolean isToday = date.equals(today);
+        FrameLayout cell = new FrameLayout(activity);
+        TextView number = ui.text(String.valueOf(date.getDayOfMonth()), 15, isToday ? Ui.ACCENT : Ui.INK, isToday);
+        number.setGravity(Gravity.CENTER);
+        number.setMinWidth(ui.dp(30));
+        number.setPadding(ui.dp(2), ui.dp(3), ui.dp(2), ui.dp(3));
+        number.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        if (isToday) {
+            number.setBackground(ui.shape(Ui.TINT, 16, 0));
+        }
         int[] colors = new int[3];
         int count = 0;
         if (work) {
@@ -160,12 +200,15 @@ final class MonthCalendar {
         if (count > 0) {
             Drawable indicators = new Dots(colors, count);
             indicators.setBounds(0, 0, ui.dp(count * 6), ui.dp(6));
-            cell.setCompoundDrawables(null, null, null, indicators);
-            cell.setCompoundDrawablePadding(ui.dp(2));
+            number.setCompoundDrawables(null, null, null, indicators);
+            number.setCompoundDrawablePadding(ui.dp(2));
+        } else {
+            number.setPadding(ui.dp(2), ui.dp(3), ui.dp(2), ui.dp(11));
         }
+        cell.addView(number, new FrameLayout.LayoutParams(-2, -2, Gravity.CENTER));
         cell.setContentDescription(date.format(DATE) + (work ? ", praca" : "")
                 + (plan.isAbsent() ? ", " + plan.status.label : "") + (plan.nightDuty ? ", dyżur nocny" : ""));
-        ui.action(cell, date.equals(today) ? Ui.TINT : Ui.WHITE, 9, 0, () -> {
+        ui.action(cell, 0, 22, 0, () -> {
             activity.closeMonthPage();
             activity.getWindow().getDecorView().postOnAnimation(() -> select.accept(date));
         });
